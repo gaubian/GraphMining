@@ -8,8 +8,12 @@ void date(string s) {
 }
 
 vector<vector<int>> f(const vector<int> &V, vector<vector<int>> &G, int l) {
-    if(l == 0) return {{}};
     vector<vector<int>> ans;
+    if(l == 2) {
+	for(int u : V) for(int v : G[u])
+	if(binary_search(V.begin(), V.end(), v)) ans.push_back({u, v});
+	return ans;
+    }
     for(int u : V) {
 	vector<int> I;
     	for(int v : G[u]) if(binary_search(V.begin(), V.end(), v)) I.push_back(v);
@@ -21,7 +25,7 @@ vector<vector<int>> f(const vector<int> &V, vector<vector<int>> &G, int l) {
     return ans;
 }
 
-unordered_set<int> g(vector<vector<int>> &G, vector<vector<int>> &ori, int k, int s) {
+unordered_set<int> g(vector<vector<int>> &G, vector<vector<int>> &oriG, int k, int s) {
     int n = G.size(), m = 0, best_i = -1;
     for(auto neighbours : G) m += neighbours.size();
     m /= 2;
@@ -30,7 +34,8 @@ unordered_set<int> g(vector<vector<int>> &G, vector<vector<int>> &ori, int k, in
     vector<bool> seen(n, false);
     for(int i = 0; i < n; ++i) V.push_back(i);
     date("startf");
-    auto cliques = f(V, ori, k);
+    auto cliques = f(V, oriG, k);
+    cout << cliques.size() << endl;
     date("endf");
     vector<unordered_set<int>> revcliques(n);
     for(int c = 0; c < cliques.size(); ++c)
@@ -67,17 +72,16 @@ unordered_set<int> g(vector<vector<int>> &G, vector<vector<int>> &ori, int k, in
 int main() {
     int n, k = 3, s = 4, u, v;
     cin >> n;
-    vector<vector<int>> G(n), ori(n);
+    vector<vector<int>> G(n), oriG(n);
     date("PARSE");
     while(cin >> u >> v) {
 	G[u].push_back(v);
 	G[v].push_back(u);
-	ori[min(u, v)].push_back(max(u, v));
+	oriG[min(u, v)].push_back(max(u, v));
     }
-    for(int u = 0; u < G.size(); ++u) sort(ori[u].begin(), ori[u].end());
+    for(int u = 0; u < G.size(); ++u) sort(oriG[u].begin(), oriG[u].end());
     date("g");
-    unordered_set<int> se = g(G, ori, k, s);
+    unordered_set<int> se = g(G, oriG, k, s);
     date("END");
     for(int x : se) cout << x << endl;
 }
-
