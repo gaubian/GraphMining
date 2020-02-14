@@ -146,7 +146,7 @@ VI solve_by_cliques(graph &G, VVI &cliques, int s) {
 	best = max(best, {score(m,i), i});
     }
     VI ans;
-    for(int i = 0; i <= n; ++i) if(order_removed[i] < best.second)
+    for(int i = 0; i < n; ++i) if(order_removed[i] < best.second)
 	ans.push_back(i);
     return ans;
 }
