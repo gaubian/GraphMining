@@ -5,6 +5,9 @@ using VI = vector<int>;
 using VVI = vector<VI>;
 using graph = VVI;
 
+const int k = 3;
+const int s = 10;
+
 /*
  * Takes as input a graph, a vertex lastu, a vector assigning to each
  * vertex its degree, a vector associating to each vertex its label and
@@ -149,14 +152,40 @@ VI solve_by_cliques(graph &G, VVI &cliques, int s) {
 }
 
 /*
- * Parse a graph given on standard input. Returns corresponding graph
- * and its oriented counterpart.
+ * Parse edges of a graph given as TSV.
+ */
+vector<pair<int, int>> parse_edges() {
+    vector<pair<int, int>> ans;
+    string line;
+    while(getline(cin, line)) {
+	if(line[0] == '%') continue;
+	stringstream line_stream(line);
+	int u, v;
+	line_stream >> u >> v;
+	ans.push_back({u, v});
+    }
+    return ans;
+}
+
+/*
+ * Given a list of edges in a TSV file, output number of vertices.
+ */
+int count_vertices(vector<pair<int, int>> &edges) {
+    int n = 0;
+    for(auto edge : edges) n = max(n, max(edge.first, edge.second));
+    return n + 1;
+}
+
+/*
+ * Parse a graph given on standard input as TSV. Returns corresponding
+ * graph and its oriented counterpart.
  */
 pair<graph, graph> parse() {
-    int n, u, v;
-    cin >> n;
+    auto edges = parse_edges();
+    int u, v, n = count_vertices(edges);
     graph G(n), oriG(n);
-    while(cin >> u >> v) {
+    for(auto edge : edges) {
+	tie(u, v) = edge;
 	G[u].push_back(v);
 	G[v].push_back(u);
 	oriG[min(u, v)].push_back(max(u, v));
@@ -166,7 +195,6 @@ pair<graph, graph> parse() {
 
 int main() {
     auto start = chrono::steady_clock::now();
-    int k = 3, s = 4;
     auto parsed = parse();
     graph G = parsed.first, oriG = parsed.second;
     VVI cliques = listing(oriG, k);
