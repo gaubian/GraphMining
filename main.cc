@@ -1,87 +1,145 @@
 #include <bits/stdc++.h>
 
 using namespace std;
+using VI = vector<int>;
+using VVI = vector<VI>;
+using graph = VVI;
 
-void date(string s) {
-    time_t result = time(nullptr);
-    cout << s << ' ' << asctime(localtime(&result)) << endl;
-}
-
-vector<vector<int>> f(const vector<int> &V, vector<vector<int>> &G, int l) {
-    vector<vector<int>> ans;
+VVI listing_aux(graph &G, int lastu, VI &deg, VI &label, int l) {
+    VVI ans;
     if(l == 2) {
-	for(int u : V) for(int v : G[u])
-	if(binary_search(V.begin(), V.end(), v)) ans.push_back({u, v});
+	for(int i = 0; i < deg[lastu]; ++i) {
+	    int u = G[lastu][i];
+	    for(int j = 0; j < deg[u]; ++j) ans.push_back({u, G[u][j]});
+	}
 	return ans;
     }
-    for(int u : V) {
-	vector<int> I;
-    	for(int v : G[u]) if(binary_search(V.begin(), V.end(), v)) I.push_back(v);
-    	for(vector<int> se : f(I, G, l-1)) {
-	    se.push_back(u);
-	    ans.push_back(se);
-	}
+
+    for(int i = 0; i < deg[lastu]; ++i) {
+	int u = G[lastu][i];
+	for(int j = 0; j < deg[u]; ++j) label[G[u][j]] = l - 1;
+	for(int j = 0; j < deg[u]; ++j) {
+	    int v = G[u][j];
+	    int d = 0;
+	    for(int k = 0; k < deg[v]; ++k) if(label[G[v][k]] == l - 1) {
+		    int z = G[v][k];
+		    G[v][k] = G[v][d];				
+		    G[v][d] = z;			
+		    d++;	
+	    }
+	    deg[v] = d;	
+	}	
+	for(VI ve : listing_aux(G, u, deg, label, l-1)) {
+	    ve.push_back(u);
+	    ans.push_back(ve);			
+	}	
+	for(int j = 0; j < deg[u]; ++j) label[G[u][j]] = l;
+	for(int j = 0; j < deg[u]; ++j) {
+	    int v = G[u][j];					
+	    int d = 0;				
+	    while(d < G[v].size() && label[G[v][d]] == l) d++;
+	    deg[v] = d;
+	}			
     }
     return ans;
 }
 
-unordered_set<int> g(vector<vector<int>> &G, vector<vector<int>> &oriG, int k, int s) {
-    int n = G.size(), m = 0, best_i = -1;
+VVI listing(graph &G, int k) {
+    int n = G.size();
+    VI all(n), label(n+1, k), deg(n);
+    for(int i = 0; i < n; ++i) {			    
+    	all[i] = i;	
+	deg[i] = G[i].size();		
+    }		
+    G.push_back(all);
+    deg.push_back(all.size());		
+    return listing_aux(G, n, deg, label, k);
+}
+
+double score(vector<int> &te, graph &G) {
+    set<int> se(te.begin(), te.end());
+    int e = 0;
+    for(int u : se) for(int v : G[u]) if(se.find(v) != se.end()) ++e;
+    return ((double) e)/(((double) se.size())*((double) (se.size() - 1)));
+}
+
+double score(int nedg, int nver) {
+    return 2 * ((double) nedg) / (((double) nver) * ((double) nver - 1));
+}
+
+void update_cliques(vector<unordered_set<int>> &rev_cliques, VVI& cliques, priority_queue<pair<int, int>> &D, int u) {
+    unordered_set<int> temp;
+    for(int c : rev_cliques[u]) for(int v : cliques[c]) if(u != v) {
+	rev_cliques[v].erase(c);
+	temp.insert(v);
+    }
+    for(int v : temp) D.push({-rev_cliques[v].size(), v});
+
+}
+
+int count_edges(graph &G) {
+    int m = 0;
     for(auto neighbours : G) m += neighbours.size();
     m /= 2;
-    double best_sc = ((double) m) / (((double) n) * ((double) n - 1));
-    vector<int> V;
-    vector<bool> seen(n, false);
-    for(int i = 0; i < n; ++i) V.push_back(i);
-    date("startf");
-    auto cliques = f(V, oriG, k);
-    cout << cliques.size() << endl;
-    date("endf");
-    vector<unordered_set<int>> revcliques(n);
+    return m;
+}
+
+vector<unordered_set<int>> reverse_cliques(VVI &cliques, int n) {
+    vector<unordered_set<int>> rev_cliques(n);
     for(int c = 0; c < cliques.size(); ++c)
-	for(int u : cliques[c]) revcliques[u].insert(c);
+	for(int u : cliques[c]) rev_cliques[u].insert(c);
+    return rev_cliques;
+}
+
+VI solve_by_cliques(graph &G, VVI &cliques, int k, int s) {
+    int n = G.size(), m = count_edges(G);
+    pair<double, int> best = {score(m,n), -1};
+    vector<bool> seen(n, false);
+    auto rev_cliques = reverse_cliques(cliques, n);
     priority_queue<pair<int,int>> D;
-    for(int u = 0; u < n; ++u) D.push(make_pair(-revcliques[u].size(), u));
-    vector<int> order_removed;
-    date("D");
-    for(int i = n; i >= s;) {
+    for(int u = 0; u < n; ++u) D.push({-rev_cliques[u].size(), u});
+    VI order_removed(n, 0);
+    for(int i = n; i > s;) {
 	int u = D.top().second;
 	D.pop();
 	if(seen[u]) continue;
-	--i;
-	order_removed.push_back(u);
 	seen[u] = true;
+	order_removed[u] = --i;
 	for(int v : G[u]) if(!seen[v]) m--;
-	unordered_set<int> temp;
-	for(int c : revcliques[u]) for(int v : cliques[c]) if(u != v) {
-	    revcliques[v].erase(c);
-	    temp.insert(v);
-	}
-	for(int v : temp) D.push(make_pair(-revcliques[v].size(), v));
-	double sc = ((double) m) / (((double) i) * ((double) i - 1));
-	if(sc > best_sc) {
-	    best_sc = sc;
-	    best_i = n - i - 1;
-	}
+	update_cliques(rev_cliques, cliques, D, u);
+	best = max(best, {score(m,i), i});
     }
-    unordered_set<int> VV(V.begin(), V.end());
-    for(int i = 0; i <= best_i; ++i) VV.erase(order_removed[i]);
-    return VV;
+    VI ans;
+    for(int i = 0; i <= n; ++i) if(order_removed[i] < best.second)
+	ans.push_back(i);
+    return ans;
 }
 
-int main() {
-    int n, k = 3, s = 4, u, v;
+pair<graph, graph> parse() {
+    int n, u, v;
     cin >> n;
-    vector<vector<int>> G(n), oriG(n);
-    date("PARSE");
+    graph G(n), oriG(n);
     while(cin >> u >> v) {
 	G[u].push_back(v);
 	G[v].push_back(u);
 	oriG[min(u, v)].push_back(max(u, v));
     }
-    for(int u = 0; u < G.size(); ++u) sort(oriG[u].begin(), oriG[u].end());
-    date("g");
-    unordered_set<int> se = g(G, oriG, k, s);
-    date("END");
-    for(int x : se) cout << x << endl;
+    return {G, oriG};
+}
+
+int main() {
+    auto start = chrono::steady_clock::now();
+    int k = 3, s = 4;
+    auto parsed = parse();
+    graph G = parsed.first, oriG = parsed.second;
+    VVI cliques = listing(oriG, k);
+    auto se = solve_by_cliques(G, cliques, k, s);
+    assert(se.size() == 57);
+    auto end = chrono::steady_clock::now();
+    cout << "The found subgraph :\n"
+    << " has size " << se.size() << "\n"
+    << " has clique density " << score(se, G) << "\n"
+    << " was found in "
+    << chrono::duration_cast<chrono::seconds>(end - start).count()
+    << " seconds\n";
 }
