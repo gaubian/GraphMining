@@ -96,7 +96,6 @@ void update_cliques(vector<unordered_set<int>> &rev_cliques, VVI& cliques, prior
 	temp.insert(v);
     }
     for(int v : temp) D.push({-rev_cliques[v].size(), v});
-
 }
 
 /*
